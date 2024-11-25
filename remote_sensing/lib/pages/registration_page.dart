@@ -1,67 +1,90 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:remote_sensing/widgets/toast.dart'; // Adjust the import path as needed
+import 'package:remote_sensing/services/auth_service.dart'; // Import your auth service
+import 'package:remote_sensing/widgets/toast.dart'; // Import the Toast widget
+import 'package:remote_sensing/pages/otp_verification_page.dart'; // Import the OTPVerificationPage widget
 
 class RegistrationPage extends StatefulWidget {
+  const RegistrationPage({super.key});
+
   @override
-  _RegistrationPageState createState() => _RegistrationPageState();
+  RegistrationPageState createState() => RegistrationPageState();
 }
 
-class _RegistrationPageState extends State<RegistrationPage> {
+class RegistrationPageState extends State<RegistrationPage> {
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  final AuthService _authService = AuthService(); // Instance of AuthService
 
   bool _obscurePassword = true; // For toggling password visibility
+  bool _isEmailEntered = false;
+  bool _isPhoneEntered = false;
 
   Future<void> _register() async {
-    try {
-      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
+    // Check that both email and phone are entered
+    if (_isEmailEntered && _isPhoneEntered) {
+      bool emailOtpSent =
+          await _authService.sendEmailOtp(_emailController.text);
+      bool phoneOtpSent =
+          await _authService.sendPhoneOtp(_phoneController.text);
 
-      await _firestore.collection('users').doc(userCredential.user!.uid).set({
-        'name': _nameController.text,
-        'username': _usernameController.text,
-        'email': _emailController.text,
-        'createdAt': DateTime.now(),
-      });
-
-      Toast.show(context, 'Registration Successful');
-
-      Navigator.pop(context);
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'weak-password') {
-        Toast.show(context, 'The password provided is too weak.');
-      } else if (e.code == 'email-already-in-use') {
-        Toast.show(context, 'The account already exists for that email.');
+      // Navigate only if both OTPs were successfully sent
+      if (emailOtpSent && phoneOtpSent) {
+        Toast.show(context, "OTP sent successfully to email and phone.");
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => OTPVerificationPage(
+              email: _emailController.text,
+              phone: _phoneController.text,
+              name: _nameController.text,
+              username: _usernameController.text,
+              password: _passwordController.text,
+            ),
+          ),
+        );
       } else {
-        Toast.show(context, 'Registration failed: ${e.message}');
+        Toast.show(context, "Failed to send OTPs. Check your entered details and try again.");
       }
+    } else {
+      Toast.show(context, "Please enter both email and phone number.");
     }
+  }
+
+  void _onEmailChanged(String value) {
+    setState(() {
+      _isEmailEntered = value.isNotEmpty;
+    });
+  }
+
+  void _onPhoneChanged(String value) {
+    setState(() {
+      _isPhoneEntered = value.isNotEmpty;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text("Registration Page"),
+        centerTitle: true,
       ),
-      body: Center( // Centering the Column
+      body: Center(
+        // Centering the Column
         child: SingleChildScrollView(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center, // Center vertically
-            crossAxisAlignment: CrossAxisAlignment.center, // Center horizontally
+            crossAxisAlignment:
+                CrossAxisAlignment.center, // Center horizontally
             children: <Widget>[
               const SizedBox(height: 40), // Space at the top
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
                 child: TextField(
                   controller: _nameController,
                   decoration: const InputDecoration(
@@ -71,9 +94,11 @@ class _RegistrationPageState extends State<RegistrationPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 15), // Space between name and username fields
+              const SizedBox(
+                  height: 15), // Space between name and username fields
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
                 child: TextField(
                   controller: _usernameController,
                   decoration: const InputDecoration(
@@ -83,11 +108,14 @@ class _RegistrationPageState extends State<RegistrationPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 15), // Space between username and email fields
+              const SizedBox(
+                  height: 15), // Space between username and email fields
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
                 child: TextField(
                   controller: _emailController,
+                  onChanged: _onEmailChanged,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
                     labelText: 'Email',
@@ -95,9 +123,26 @@ class _RegistrationPageState extends State<RegistrationPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 15), // Space between email and password fields
+              const SizedBox(
+                  height: 15), // Space between divider and phone fields
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                child: TextField(
+                  controller: _phoneController,
+                  onChanged: _onPhoneChanged,
+                  decoration: const InputDecoration(
+                    border: OutlineInputBorder(),
+                    labelText: 'Phone',
+                    hintText: 'Enter your phone number',
+                  ),
+                ),
+              ),
+              const SizedBox(
+                  height: 15), // Space between phone and password fields
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
                 child: TextField(
                   controller: _passwordController,
                   obscureText: _obscurePassword, // Controlled by toggle
@@ -107,11 +152,14 @@ class _RegistrationPageState extends State<RegistrationPage> {
                     hintText: 'Enter secure password',
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
                       ),
                       onPressed: () {
                         setState(() {
-                          _obscurePassword = !_obscurePassword; // Toggle visibility
+                          _obscurePassword =
+                              !_obscurePassword; // Toggle visibility
                         });
                       },
                     ),
@@ -119,30 +167,16 @@ class _RegistrationPageState extends State<RegistrationPage> {
                 ),
               ),
               const SizedBox(height: 20), // Space before the register button
-              Container(
-                height: 50,
-                width: 250,
-                decoration: BoxDecoration(
-                  color: Colors.blue,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: TextButton(
-                  onPressed: _register,
-                  child: const Text(
-                    'Register',
-                    style: TextStyle(color: Colors.white, fontSize: 25),
-                  ),
-                ),
+              FilledButton(
+                onPressed: _register,
+                child: const Text('Register'),
               ),
               const SizedBox(height: 30), // Space after the register button
               TextButton(
                 onPressed: () {
                   Navigator.pop(context);
                 },
-                child: const Text(
-                  'Already have an account? Login',
-                  style: TextStyle(color: Colors.blue, fontSize: 15),
-                ),
+                child: const Text('Already have an account? Login'),
               ),
               const SizedBox(height: 50), // Space at the bottom
             ],

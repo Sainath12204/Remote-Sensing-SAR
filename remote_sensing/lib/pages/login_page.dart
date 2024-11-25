@@ -1,73 +1,96 @@
-import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:remote_sensing/pages/registration_page.dart';
 import 'package:remote_sensing/pages/home_page.dart';
 import 'package:remote_sensing/widgets/toast.dart'; // Adjust the import path as needed
-import 'dart:developer' as developer;
+import 'package:remote_sensing/services/auth_service.dart'; // Adjust the import path as needed
 
 class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
   @override
-  _LoginPageState createState() => _LoginPageState();
+  LoginPageState createState() => LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
-  final TextEditingController _emailController = TextEditingController();
+class LoginPageState extends State<LoginPage> {
+  final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final AuthService _authService = AuthService(); // Instance of AuthService
   bool _obscurePassword = true; // For toggling password visibility
 
-  Future<void> _login() async {
-    try {
-      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
-        email: _emailController.text,
-        password: _passwordController.text,
-      );
+Future<void> _login() async {
+  String username = _usernameController.text;
+  String password = _passwordController.text;
 
-      await _firestore.collection('users').doc(userCredential.user!.uid).set({
-        'email': userCredential.user!.email,
-        'lastLogin': DateTime.now(),
-      }, SetOptions(merge: true));
+  try {
+    // Call the login method from AuthService
+    UserCredential? userCredential = await _authService.login(username: username, password: password);
 
-      Toast.show(context, 'Login Successful');
-      // Redirect to HomePage after successful login
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) =>
-              HomePage(user: userCredential.user!), // Pass the User object
-        ),
-      );
-    } on FirebaseAuthException catch (e) {
-      Toast.show(context, 'Invalid login credentials. Please try again.');
+    if (userCredential == null) {
+      // Show a toast message if the userCredential is null
+      Toast.show(context, 'An error occurred. Please try again.');
+      return;
     }
+
+    // Redirect to HomePage after successful login
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HomePage(user: userCredential.user!, username: username),
+      ),
+    );
+  } on FirebaseAuthException catch (e) {
+    // Handle specific Firebase authentication errors
+    String errorMessage;
+
+    switch (e.code) {
+      case 'user-not-found':
+        errorMessage = 'No user found for that username.';
+        break;
+      case 'wrong-password':
+        errorMessage = 'Wrong password provided for that user.';
+        break;
+      case 'user-disabled':
+        errorMessage = 'This user has been disabled.';
+        break;
+      case 'operation-not-allowed':
+        errorMessage = 'This operation is not allowed. Please contact support.';
+        break;
+      default:
+        errorMessage = 'An undefined error occurred.';
+    }
+
+    // Show a toast message for the error
+    Toast.show(context, errorMessage);
+  } catch (e) {
+    // Handle any other exceptions
+    Toast.show(context, 'An error occurred. Please try again.');
   }
+}
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
       appBar: AppBar(
         title: const Text("Login Page"),
+        centerTitle: true,
       ),
       body: Center(
-        // Centering the Column
         child: SingleChildScrollView(
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center, // Center vertically
-            crossAxisAlignment:
-                CrossAxisAlignment.center, // Center horizontally
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
               const SizedBox(height: 70), // Space at the top
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 15),
                 child: TextField(
-                  controller: _emailController,
+                  controller: _usernameController,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
-                    labelText: 'Email',
-                    hintText: 'Enter valid email id as abc@gmail.com',
+                    labelText: 'Username',
+                    hintText: 'Enter your username',
                   ),
                 ),
               ),
@@ -98,33 +121,10 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
               ),
-              const SizedBox(
-                  height:
-                      15), // Space between password and forgot password button
-              // TextButton(
-              //   onPressed: () {
-              //     // Handle Forgot Password
-              //   },
-              //   child: const Text(
-              //     'Forgot Password?',
-              //     style: TextStyle(color: Colors.blue, fontSize: 15),
-              //   ),
-              // ),
               const SizedBox(height: 15), // Space before the login button
-              Container(
-                height: 50,
-                width: 250,
-                decoration: BoxDecoration(
-                  color: Colors.blue,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: TextButton(
-                  onPressed: _login,
-                  child: const Text(
-                    'Login',
-                    style: TextStyle(color: Colors.white, fontSize: 25),
-                  ),
-                ),
+              FilledButton(
+                onPressed: _login,
+                child: const Text('Login'),
               ),
               const SizedBox(height: 30), // Space after the login button
               TextButton(
@@ -134,10 +134,7 @@ class _LoginPageState extends State<LoginPage> {
                     MaterialPageRoute(builder: (context) => RegistrationPage()),
                   );
                 },
-                child: const Text(
-                  'New User? Create Account',
-                  style: TextStyle(color: Colors.blue, fontSize: 15),
-                ),
+                child: const Text('New User? Create Account'),
               ),
               const SizedBox(height: 50), // Space at the bottom
             ],

@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 class Toast {
   static void show(BuildContext context, String message) {
     final overlay = Overlay.of(context);
-    
+    final snackBarTheme = Theme.of(context).snackBarTheme;
+
     final overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
         top: 100.0,
@@ -14,12 +15,12 @@ class Toast {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
             decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(8.0),
+              color: snackBarTheme.backgroundColor,
+              borderRadius: BorderRadius.circular(16.0),
             ),
             child: Text(
               message,
-              style: const TextStyle(color: Colors.white, fontSize: 16.0),
+              style: snackBarTheme.contentTextStyle,
               textAlign: TextAlign.center,
             ),
           ),
