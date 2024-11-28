@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'package:remote_sensing/services/image_classification_service.dart';
-import 'dart:developer' as developer;
+import 'package:remote_sensing/pages/classification_page.dart';
+import 'package:remote_sensing/pages/colorisation_page.dart';
 
 class HomePage extends StatefulWidget {
   final User user;
@@ -19,53 +17,15 @@ class HomePage extends StatefulWidget {
 }
 
 class HomePageState extends State<HomePage> {
-  File? _image;
-  final ImagePicker picker = ImagePicker();
-  String _predictionResult = '';
-  final ImageClassificationService _imageClassificationService =
-      ImageClassificationService(); // Instantiate the service
-
-  // User attributes
-
-  Future<void> _pickImage() async {
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
-    if (pickedFile != null) {
-      setState(() {
-        _image = File(pickedFile.path);
-        _predictionResult =
-            ''; // Reset the prediction result when a new image is picked
-      });
-    }
-  }
-
-  Future<void> _classifyImage() async {
-    if (_image == null) return; // If no image is selected, return
-
-    try {
-      String prediction =
-          await _imageClassificationService.classifyImage(_image!);
-      setState(() {
-        _predictionResult = prediction; // Set the prediction result
-      });
-      developer.log('Image classified successfully: $_predictionResult');
-    } catch (e) {
-      setState(() {
-        _predictionResult = 'Failed to classify image: $e';
-      });
-      developer.log('Failed to classify image: $e');
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     String username = widget.username;
+
     return Scaffold(
       appBar: AppBar(
         title: Text("Home Page"),
         centerTitle: true,
         actions: [
-          // Add a PopupMenuButton for the menu options
           PopupMenuButton(
             icon: Icon(Icons.menu),
             itemBuilder: (context) => [
@@ -91,42 +51,43 @@ class HomePageState extends State<HomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            // Create a box for the uploaded image
-            Container(
-              width: 200, // Set width for the image container
-              height: 200, // Set height for the image container
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey, width: 2), // Add border
-                borderRadius: BorderRadius.circular(8), // Rounded corners
+            FilledButton.icon(
+              onPressed: () {
+                // Navigate to ClassificationPage
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => ClassificationPage(
+                          user: widget.user, username: username)),
+                );
+              },
+              icon: Icon(Icons.category, size: 30), // Icon for classification
+              label: const Text("Classify Crop Image",
+                  style: TextStyle(fontSize: 16)), // Text with adjusted size
+              style: ButtonStyle(
+                fixedSize: WidgetStateProperty.all(
+                    Size(230, 50)), // Adjusted button size
               ),
-              child: _image != null
-                  ? ClipRRect(
-                      borderRadius:
-                          BorderRadius.circular(8), // Match border radius
-                      child: Image.file(
-                        _image!,
-                        fit: BoxFit.cover,
-                      ),
-                    )
-                  : Center(
-                      child: Text('No image selected'), // Placeholder text
-                    ),
             ),
             const SizedBox(height: 20),
-            FilledButton(
-              onPressed: _pickImage,
-              child: const Text("Upload Image"),
-            ),
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: _classifyImage,
-              child: const Text("Classify Image"),
-            ),
-            const SizedBox(height: 20),
-            if (_predictionResult.isNotEmpty)
-              Text(
-                'Prediction: $_predictionResult',
+            FilledButton.icon(
+              onPressed: () {
+                // Navigate to ColorizationPage
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => ColorizationPage(
+                          user: widget.user, username: username)),
+                );
+              },
+              icon: Icon(Icons.palette, size: 30), // Icon for colorization
+              label: const Text("Colorize SAR Image",
+                  style: TextStyle(fontSize: 16)), // Text with adjusted size
+              style: ButtonStyle(
+                fixedSize: WidgetStateProperty.all(
+                    Size(230, 50)), // Adjusted button size
               ),
+            ),
           ],
         ),
       ),

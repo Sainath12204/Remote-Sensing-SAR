@@ -19,7 +19,7 @@ if (localPropertiesFile.exists()) {
 android {
     namespace = "com.example.remote_sensing"
     compileSdkVersion = localProperties.getProperty('flutter.compileSdkVersion').toInteger()    
-    ndkVersion = flutter.ndkVersion
+    ndkVersion = localProperties.getProperty('flutter.ndkVersion')
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
