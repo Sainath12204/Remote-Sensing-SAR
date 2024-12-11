@@ -37,12 +37,12 @@ class ClassificationPageState extends State<ClassificationPage> {
   }
 
   // Function to classify the image
-  Future<void> _classifyImage() async {
+  Future<void> _classifyImage(bool useViT) async {
     if (_image == null) return; // If no image is selected, return
 
     try {
       String prediction =
-          await _imageClassificationService.classifyImage(_image!);
+          await _imageClassificationService.classifyImage(_image!, useViT);
       setState(() {
         _predictionResult = prediction; // Set the prediction result
       });
@@ -117,20 +117,33 @@ class ClassificationPageState extends State<ClassificationPage> {
               ),
               style: ButtonStyle(
                 fixedSize: WidgetStateProperty.all(
-                    Size(220, 50)), // Increase button size
+                    Size(230, 50)), // Increase button size
               ),
             ),
             const SizedBox(height: 20),
             FilledButton.icon(
-              onPressed: _classifyImage,
-              icon: Icon(Icons.palette, size: 30), // Increase icon size
+              onPressed: () => _classifyImage(false),
+              icon: Icon(Icons.category, size: 30), // Increase icon size
               label: const Text(
-                "Classify Crop Image",
+                "Classify with VGG-16",
                 style: TextStyle(fontSize: 16), // Increase text size
               ),
               style: ButtonStyle(
                 fixedSize: WidgetStateProperty.all(
-                    Size(230, 50)), // Increase button size
+                    Size(240, 50)), // Increase button size
+              ),
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: () => _classifyImage(true),
+              icon: Icon(Icons.category, size: 30), // Increase icon size
+              label: const Text(
+                "Classify with ViT",
+                style: TextStyle(fontSize: 16), // Increase text size
+              ),
+              style: ButtonStyle(
+                fixedSize: WidgetStateProperty.all(
+                    Size(240, 50)), // Increase button size
               ),
             ),
             const SizedBox(height: 20),

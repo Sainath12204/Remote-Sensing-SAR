@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:remote_sensing/pages/classification_page.dart';
 import 'package:remote_sensing/pages/colorisation_page.dart';
+import 'package:remote_sensing/pages/flood_detection_page.dart';
 
 class HomePage extends StatefulWidget {
   final User user;
@@ -80,8 +81,28 @@ class HomePageState extends State<HomePage> {
                           user: widget.user, username: username)),
                 );
               },
-              icon: Icon(Icons.palette, size: 30), // Icon for colorization
+              icon: Icon(Icons.format_color_fill,
+                  size: 30), // Icon for colorization
               label: const Text("Colorize SAR Image",
+                  style: TextStyle(fontSize: 16)), // Text with adjusted size
+              style: ButtonStyle(
+                fixedSize: WidgetStateProperty.all(
+                    Size(230, 50)), // Adjusted button size
+              ),
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: () {
+                // Navigate to FloodDetectionPage
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => FloodDetectionPage(
+                          user: widget.user, username: username)),
+                );
+              },
+              icon: Icon(Icons.flood, size: 30), // Icon for colorization
+              label: const Text("Detect floods from SAR Image",
                   style: TextStyle(fontSize: 16)), // Text with adjusted size
               style: ButtonStyle(
                 fixedSize: WidgetStateProperty.all(

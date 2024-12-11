@@ -19,7 +19,6 @@ class ColorizationPageState extends State<ColorizationPage> {
   File? _inputImage; // To store the input grayscale image
   File? _outputImage; // To store the colorized image
   final ImagePicker picker = ImagePicker();
-  String _colorizationResult = '';
 
   final ImageProcessingService _imageProcessingService =
       ImageProcessingService(); // Instantiate the service
@@ -33,7 +32,6 @@ class ColorizationPageState extends State<ColorizationPage> {
         _inputImage = File(pickedFile.path);
         _outputImage =
             null; // Reset the output image when a new image is picked
-        _colorizationResult = ''; // Reset the result text
       });
     }
   }
@@ -50,17 +48,14 @@ class ColorizationPageState extends State<ColorizationPage> {
       setState(() {
         _outputImage =
             colorizedImage; // Set the output image after colorization
-        _colorizationResult = 'Colorization Result: Success'; // Display success
       });
     } catch (e) {
-      setState(() {
-        _colorizationResult = 'Error colorizing image: $e'; // Handle error
-      });
+      setState(() {});
     }
   }
 
   // A helper method to create consistent container styling for both input and output images
-  Widget _buildImageContainer(File? image) {
+  Widget _buildImageContainer(File? image, String label) {
     return Container(
       width: 250,
       height: 250,
@@ -76,7 +71,7 @@ class ColorizationPageState extends State<ColorizationPage> {
                 fit: BoxFit.cover,
               ),
             )
-          : Center(child: Text('No image')),
+          : Center(child: Text(label)),
     );
   }
 
@@ -115,8 +110,8 @@ class ColorizationPageState extends State<ColorizationPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
             // Input Image Container
-            _buildImageContainer(
-                _inputImage), // Reusable container for input image
+            _buildImageContainer(_inputImage,
+                'Upload Grayscale Image'), // Reusable container for input image
             const SizedBox(height: 20),
             FilledButton.icon(
               onPressed: _pickImage,
@@ -133,7 +128,8 @@ class ColorizationPageState extends State<ColorizationPage> {
             const SizedBox(height: 20),
             FilledButton.icon(
               onPressed: _colorizeImage,
-              icon: Icon(Icons.palette, size: 30), // Increase icon size
+              icon:
+                  Icon(Icons.format_color_fill, size: 30), // Increase icon size
               label: const Text(
                 "Colorize Image",
                 style: TextStyle(fontSize: 16), // Increase text size
@@ -145,16 +141,19 @@ class ColorizationPageState extends State<ColorizationPage> {
             ),
             const SizedBox(height: 20),
 
-            // Output Image Container (using the same reusable container method)
-            _buildImageContainer(
-                _outputImage), // Reusable container for output image
+            // Display Colorized Image (Predicted Image)
 
-            const SizedBox(height: 20),
-            if (_colorizationResult.isNotEmpty)
-              Text(
-                _colorizationResult, // Display colorization success or error message
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+            // Label for colorized image
+            Text(
+              "Predicted Colorized Image",
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue),
+            ),
+            const SizedBox(height: 10),
+            _buildImageContainer(_outputImage,
+                'Colorized Image'), // Reusable container for colorized image
           ],
         ),
       ),

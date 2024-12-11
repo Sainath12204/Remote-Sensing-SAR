@@ -9,14 +9,16 @@ class ImageProcessingService {
   late final String apiUrl;
   late final String classifyApiUrl;
   late final String colorizeApiUrl;
+  late final String floodDetectionApiUrl;
 
   ImageProcessingService() {
     apiUrl = dotenv.get('HOST');
-    classifyApiUrl = 'http://$apiUrl:5000/classify';
+    classifyApiUrl = 'http://$apiUrl:5000/classify_crop';
     colorizeApiUrl = 'http://$apiUrl:5000/colorize';
+    floodDetectionApiUrl = 'http://$apiUrl:5000/flood_detection';
   }
 
-  Future<String> classifyImage(File image) async {
+  Future<String> classifyImage(File image, bool useViT) async {
     // Read the image as bytes
     final bytes = await image.readAsBytes();
     // Encode the bytes to Base64
@@ -25,6 +27,7 @@ class ImageProcessingService {
     // Create the JSON body
     final body = jsonEncode({
       'image': base64Image,
+      'useViT': useViT,
     });
 
     // Send the request
@@ -79,6 +82,51 @@ class ImageProcessingService {
       return colorizedFile;
     } else {
       throw Exception('Failed to colorize image: ${response.statusCode}');
+    }
+  }
+
+  // Function for flood detection
+  Future<Map<String, dynamic>> detectFlood(File image) async {
+    // Read the image as bytes
+    final bytes = await image.readAsBytes();
+    // Encode the bytes to Base64
+    String base64Image = base64Encode(bytes);
+
+    // Create the JSON body
+    final body = jsonEncode({
+      'image': base64Image,
+    });
+
+    // Send the request
+    var response = await http.post(
+      Uri.parse(floodDetectionApiUrl),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: body,
+    );
+
+    // Check the response
+    if (response.statusCode == 200) {
+      var responseData = jsonDecode(response.body);
+      // Assuming the response contains base64 strings of the predicted mask and result image
+      String predictedMaskBase64 = responseData['predicted_mask'];
+      String resultImageBase64 = responseData['result_image'];
+
+      // Convert the base64 strings back to files
+      List<int> predictedMaskBytes = base64Decode(predictedMaskBase64);
+      List<int> resultImageBytes = base64Decode(resultImageBase64);
+
+      File predictedMaskFile = await _saveImageToFile(predictedMaskBytes);
+      File resultImageFile = await _saveImageToFile(resultImageBytes);
+
+      return {
+        'predicted_mask': predictedMaskFile,
+        'result_image': resultImageFile,
+        'flood_detected': responseData['flood_detected'],
+      };
+    } else {
+      throw Exception('Failed to detect flood: ${response.statusCode}');
     }
   }
 
