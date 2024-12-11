@@ -11,12 +11,17 @@ void main() async {
   await dotenv.load(fileName: ".env");
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const MyApp());
+
+  // Get current user to decide which page to show
+  User? currentUser = FirebaseAuth.instance.currentUser;
+
+  runApp(MyApp(currentUser: currentUser));
 }
 
 class MyApp extends StatelessWidget {
+  final User? currentUser;
 
-  const MyApp({super.key});
+  const MyApp({super.key, this.currentUser});
 
   @override
   Widget build(BuildContext context) {
@@ -102,14 +107,15 @@ class MyApp extends StatelessWidget {
         swapLegacyOnMaterial3: true,
       ),
       themeMode: ThemeMode.system,
-
       routes: {
         '/login': (context) => LoginPage(),
-        '/home': (context) => HomePage(
-            user: FirebaseAuth.instance.currentUser!,
-            username: ""), // Example of home route
+        '/home': (context) =>
+            HomePage(user: currentUser!, username: currentUser!.displayName!),
       },
-      home: LoginPage(), // Set SignInPage as the default page
+      // Check for current user and navigate accordingly
+      home: currentUser == null
+          ? LoginPage()
+          : HomePage(user: currentUser!, username: currentUser!.displayName!),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:email_otp/email_otp.dart';
 import 'package:remote_sensing/services/database_service.dart'; // Import Firestore service
 import 'dart:developer' as developer;
+import 'dart:async';
 
 class AuthService {
   // Private constructor
@@ -33,26 +34,32 @@ class AuthService {
 
   // Function to send OTP to phone
   Future<bool> sendPhoneOtp(String phone) async {
-    try {
-      await _auth.verifyPhoneNumber(
-        phoneNumber: phone,
-        verificationCompleted: (PhoneAuthCredential credential) {},
-        verificationFailed: (FirebaseAuthException e) {
-          phoneVerified = false;
-          throw FirebaseAuthException(
-              message: 'Invalid phone number', code: e.code);
-        },
-        codeSent: (String verificationId, int? resendToken) {
-          _verificationId = verificationId;
-          phoneOtpSent = true;
-        },
-        codeAutoRetrievalTimeout: (String verificationId) {},
-      );
-      return true;
-    } on Exception catch (e) {
-      developer.log('Error sending phone OTP: $e');
-      return false;
-    }
+    // Await a future that will be completed in the callback
+    Completer<bool> completer = Completer<bool>();
+
+    _auth.verifyPhoneNumber(
+      phoneNumber: phone,
+      verificationCompleted: (PhoneAuthCredential credential) {
+        phoneVerified = true; // Set variable to true when completed
+        completer.complete(true); // Complete the future
+      },
+      verificationFailed: (FirebaseAuthException e) {
+        phoneVerified = false; // Set variable to false when failed
+        completer.complete(false); // Complete the future
+      },
+      codeSent: (String verificationId, int? resendToken) {
+        _verificationId = verificationId;
+        phoneOtpSent = true;
+        completer.complete(true); // Complete the future when OTP is sent
+      },
+      codeAutoRetrievalTimeout: (String verificationId) {
+        phoneVerified = false; // Handle timeout case
+        completer.complete(false); // Complete the future
+      },
+    );
+
+    // Wait for the completer to complete and return the result
+    return completer.future;
   }
 
   // Function to verify email OTP
@@ -70,39 +77,39 @@ class AuthService {
       );
       phoneVerified = true;
       return true;
-    } on Exception catch (e) {
+    } catch (e) {
       developer.log('Error verifying phone OTP: $e');
       return false;
     }
   }
 
-Future<User?> registerUser({
-  required String email,
-  required String password,
-  required String name,
-  required String phoneNumber,
-  required String username,
-}) async {
-  UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
-    email: email,
-    password: password,
-  );
+  Future<User?> registerUser({
+    required String email,
+    required String password,
+    required String name,
+    required String phoneNumber,
+    required String username,
+  }) async {
+    UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
 
-  if (phoneVerified && phoneCredential != null) {
-    await userCredential.user?.linkWithCredential(phoneCredential!);
+    if (phoneVerified && phoneCredential != null) {
+      await userCredential.user?.linkWithCredential(phoneCredential!);
+    }
+    await _firestoreService.createUser(
+      userCredential.user!.uid,
+      email,
+      phoneNumber,
+      username,
+      name,
+    );
+
+    userCredential.user?.updateDisplayName(username);
+
+    return userCredential.user; // Return the User object at the end
   }
-
-  await _firestoreService.createUser(
-    userCredential.user!.uid,
-    email,
-    phoneNumber,
-    username,
-    name,
-  );
-
-  return userCredential.user; // Return the User object at the end
-}
-
 
   // Function to log in a user with username and password
   Future<UserCredential?> login({

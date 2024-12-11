@@ -42,5 +42,8 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-
+# Dotenv environment variable files
 .env
+
+# Firebase configuration files
+/lib/firebase_options.dart
