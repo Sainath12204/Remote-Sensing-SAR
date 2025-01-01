@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:io';
 import 'package:remote_sensing/services/image_processing_service.dart'; // Import your service
+import 'package:remote_sensing/widgets/toast.dart'; // Import your toast widget
 
 class ColorizationPage extends StatefulWidget {
   final User user;
@@ -38,7 +39,10 @@ class ColorizationPageState extends State<ColorizationPage> {
 
   // Function to colorize the image using the ImageProcessingService
   Future<void> _colorizeImage() async {
-    if (_inputImage == null) return; // If no input image is selected, return
+    if (_inputImage == null) {
+      Toast.show(context, 'Please upload an image first', ToastType.info);
+      return;
+    }
 
     try {
       // Call the colorizeImage method from the service
@@ -49,29 +53,46 @@ class ColorizationPageState extends State<ColorizationPage> {
         _outputImage =
             colorizedImage; // Set the output image after colorization
       });
+    } on FirebaseAuthException catch (e) {
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+      Toast.show(
+          context, 'Session expired. Please login again', ToastType.error);
     } catch (e) {
-      setState(() {});
+      Toast.show(
+          context,
+          'An unexpected error occurred. Please try again later.',
+          ToastType.error);
     }
   }
 
-  // A helper method to create consistent container styling for both input and output images
+  // A helper method to create consistent container styling for images
   Widget _buildImageContainer(File? image, String label) {
-    return Container(
-      width: 250,
-      height: 250,
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.grey, width: 2),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: image != null
-          ? ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.file(
-                image,
-                fit: BoxFit.cover,
-              ),
-            )
-          : Center(child: Text(label)),
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blue),
+        ),
+        const SizedBox(height: 10),
+        Container(
+          width: 250,
+          height: 250,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey, width: 2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: image != null
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.file(
+                    image,
+                    fit: BoxFit.cover,
+                  ),
+                )
+              : Center(child: Text('No image selected')),
+        ),
+      ],
     );
   }
 
@@ -111,7 +132,7 @@ class ColorizationPageState extends State<ColorizationPage> {
           children: <Widget>[
             // Input Image Container
             _buildImageContainer(_inputImage,
-                'Upload Grayscale Image'), // Reusable container for input image
+                'Grayscale Image'), // Reusable container for input image
             const SizedBox(height: 20),
             FilledButton.icon(
               onPressed: _pickImage,
@@ -142,16 +163,6 @@ class ColorizationPageState extends State<ColorizationPage> {
             const SizedBox(height: 20),
 
             // Display Colorized Image (Predicted Image)
-
-            // Label for colorized image
-            Text(
-              "Predicted Colorized Image",
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue),
-            ),
-            const SizedBox(height: 10),
             _buildImageContainer(_outputImage,
                 'Colorized Image'), // Reusable container for colorized image
           ],

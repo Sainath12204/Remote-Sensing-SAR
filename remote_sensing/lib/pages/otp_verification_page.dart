@@ -45,7 +45,8 @@ class OTPVerificationPageState extends State<OTPVerificationPage> {
     // Handle the combinations of email and phone OTP verification
     if (_isEmailVerified && _isPhoneVerified) {
       // Both OTPs are verified
-      Toast.show(context, 'Both email and phone OTPs verified');
+      Toast.show(
+          context, 'Both email and phone OTPs verified', ToastType.success);
 
       // Register the user
       User? user = await _authService.registerUser(
@@ -57,7 +58,7 @@ class OTPVerificationPageState extends State<OTPVerificationPage> {
       );
 
       if (user != null) {
-        Toast.show(context, 'User registered successfully');
+        Toast.show(context, 'User registered successfully', ToastType.success);
 
         // Navigate to the homepage and clear the navigation stack
         // Navigate to the homepage and clear the navigation stack
@@ -74,13 +75,16 @@ class OTPVerificationPageState extends State<OTPVerificationPage> {
       }
     } else if (_isEmailVerified && !_isPhoneVerified) {
       // Email OTP is verified, but phone OTP is not
-      Toast.show(context, 'Email OTP verified, but phone OTP is invalid');
+      Toast.show(context, 'Email OTP verified, but phone OTP is invalid',
+          ToastType.error);
     } else if (!_isEmailVerified && _isPhoneVerified) {
       // Phone OTP is verified, but email OTP is not
-      Toast.show(context, 'Phone OTP verified, but email OTP is invalid');
+      Toast.show(context, 'Phone OTP verified, but email OTP is invalid',
+          ToastType.error);
     } else {
       // Neither OTP is verified
-      Toast.show(context, 'Both email and phone OTPs are invalid');
+      Toast.show(
+          context, 'Both email and phone OTPs are invalid', ToastType.error);
     }
   }
 
@@ -94,15 +98,21 @@ class OTPVerificationPageState extends State<OTPVerificationPage> {
 
     // Show appropriate toast messages based on OTP send results
     if (emailOtpSent && phoneOtpSent) {
-      Toast.show(context, 'Both Email and Phone OTPs sent successfully');
+      Toast.show(context, 'Both Email and Phone OTPs sent successfully',
+          ToastType.success);
     } else if (emailOtpSent && !phoneOtpSent) {
       Toast.show(
-          context, 'Email OTP sent successfully, but failed to send Phone OTP');
+          context,
+          'Email OTP sent successfully, but failed to send Phone OTP',
+          ToastType.error);
     } else if (!emailOtpSent && phoneOtpSent) {
       Toast.show(
-          context, 'Phone OTP sent successfully, but failed to send Email OTP');
+          context,
+          'Phone OTP sent successfully, but failed to send Email OTP',
+          ToastType.error);
     } else {
-      Toast.show(context, 'Failed to send both Email and Phone OTPs');
+      Toast.show(
+          context, 'Failed to send both Email and Phone OTPs', ToastType.error);
     }
   }
 

@@ -3,7 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:io';
 import 'package:remote_sensing/services/image_processing_service.dart';
-import 'dart:developer' as developer;
+import 'package:remote_sensing/widgets/toast.dart';
 
 class ClassificationPage extends StatefulWidget {
   final User user;
@@ -38,7 +38,10 @@ class ClassificationPageState extends State<ClassificationPage> {
 
   // Function to classify the image
   Future<void> _classifyImage(bool useViT) async {
-    if (_image == null) return; // If no image is selected, return
+    if (_image == null) {
+      Toast.show(context, 'Please upload an image first', ToastType.info);
+      return;
+    }
 
     try {
       String prediction =
@@ -46,12 +49,15 @@ class ClassificationPageState extends State<ClassificationPage> {
       setState(() {
         _predictionResult = prediction; // Set the prediction result
       });
-      developer.log('Image classified successfully: $_predictionResult');
+    } on FirebaseAuthException catch (e) {
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+      Toast.show(
+          context, 'Session expired. Please login again', ToastType.error);
     } catch (e) {
-      setState(() {
-        _predictionResult = 'Failed to classify image: $e';
-      });
-      developer.log('Failed to classify image: $e');
+      Toast.show(
+          context,
+          'An unexpected error occurred. Please try again later.',
+          ToastType.error);
     }
   }
 
@@ -147,11 +153,23 @@ class ClassificationPageState extends State<ClassificationPage> {
               ),
             ),
             const SizedBox(height: 20),
-            if (_predictionResult.isNotEmpty)
-              Text(
-                'Prediction: $_predictionResult',
-                style: TextStyle(fontSize: 20),
+            // Prediction result container
+            Container(
+              width: 300,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey, width: 2),
+                borderRadius: BorderRadius.circular(8),
               ),
+              child: Center(
+                child: Text(
+                  _predictionResult.isNotEmpty
+                      ? 'Prediction: $_predictionResult'
+                      : 'No prediction yet',
+                  style: TextStyle(fontSize: 20),
+                ),
+              ),
+            ),
           ],
         ),
       ),

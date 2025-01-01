@@ -18,56 +18,56 @@ class LoginPageState extends State<LoginPage> {
   final AuthService _authService = AuthService(); // Instance of AuthService
   bool _obscurePassword = true; // For toggling password visibility
 
-Future<void> _login() async {
-  String username = _usernameController.text;
-  String password = _passwordController.text;
+  Future<void> _login() async {
+    String username = _usernameController.text;
+    String password = _passwordController.text;
 
-  try {
-    // Call the login method from AuthService
-    UserCredential? userCredential = await _authService.login(username: username, password: password);
-
-    if (userCredential == null) {
-      // Show a toast message if the userCredential is null
-      Toast.show(context, 'An error occurred. Please try again.');
+    if (password.length < 6) {
+      Toast.show(context, 'Password must be at least 6 characters long', ToastType.info);
       return;
     }
 
-    // Redirect to HomePage after successful login
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => HomePage(user: userCredential.user!, username: username),
-      ),
-    );
-  } on FirebaseAuthException catch (e) {
-    // Handle specific Firebase authentication errors
-    String errorMessage;
+    try {
+      // Call the login method from AuthService
+      UserCredential? userCredential =
+          await _authService.login(username: username, password: password);
 
-    switch (e.code) {
-      case 'user-not-found':
-        errorMessage = 'No user found for that username.';
-        break;
-      case 'wrong-password':
-        errorMessage = 'Wrong password provided for that user.';
-        break;
-      case 'user-disabled':
-        errorMessage = 'This user has been disabled.';
-        break;
-      case 'operation-not-allowed':
-        errorMessage = 'This operation is not allowed. Please contact support.';
-        break;
-      default:
-        errorMessage = 'An undefined error occurred.';
+      if (userCredential == null) {
+        // Show a toast message if the userCredential is null
+        Toast.show(context, 'An error occurred. Please try again.', ToastType.error);
+        return;
+      }
+
+      // Redirect to HomePage after successful login
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) =>
+              HomePage(user: userCredential.user!, username: username),
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      // Handle specific Firebase authentication errors
+      String errorMessage;
+      switch (e.code) {
+        case 'user-not-found':
+          errorMessage = 'No user found for that username.';
+          break;
+        case 'invalid-credential':
+          errorMessage = 'Incorrect password. Please try again.';
+          break;
+        default:
+          errorMessage =
+              'An unexpected error occurred. Please try again later.';
+      }
+
+      // Show a toast message for the error
+      Toast.show(context, errorMessage, ToastType.error);
+    } catch (e) {
+      // Handle any other exceptions
+      Toast.show(context, 'An error occurred. Please try again.', ToastType.error);
     }
-
-    // Show a toast message for the error
-    Toast.show(context, errorMessage);
-  } catch (e) {
-    // Handle any other exceptions
-    Toast.show(context, 'An error occurred. Please try again.');
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
