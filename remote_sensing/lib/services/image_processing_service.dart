@@ -2,139 +2,147 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Import Firebase Auth
+import 'package:archive/archive.dart';
+import 'dart:developer' as developer;
 
 class ImageProcessingService {
-  // Replace with your API endpoint
-
   late final String apiUrl;
   late final String classifyApiUrl;
   late final String colorizeApiUrl;
   late final String floodDetectionApiUrl;
 
   ImageProcessingService() {
-    apiUrl = dotenv.get('HOST');
-    classifyApiUrl = 'http://$apiUrl:5000/classify_crop';
-    colorizeApiUrl = 'http://$apiUrl:5000/colorize';
-    floodDetectionApiUrl = 'http://$apiUrl:5000/flood_detection';
+    apiUrl = dotenv.get('SERVER_URL');
+    classifyApiUrl = '$apiUrl/classify_crop';
+    colorizeApiUrl = '$apiUrl/colorize';
+    floodDetectionApiUrl = '$apiUrl/flood_detection';
+  }
+
+  Future<String?> _getIdToken() async {
+    User? user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      return await user.getIdToken();
+    } else {
+      return null;
+    }
   }
 
   Future<String> classifyImage(File image, bool useViT) async {
-    // Read the image as bytes
-    final bytes = await image.readAsBytes();
-    // Encode the bytes to Base64
-    String base64Image = base64Encode(bytes);
+    final idToken = await _getIdToken();
+    if (idToken == null) {
+      throw FirebaseAuthException(
+        code: 'ERROR_USER_NOT_LOGGED_IN',
+        message: 'User not logged in',
+      );
+    }
 
-    // Create the JSON body
-    final body = jsonEncode({
-      'image': base64Image,
-      'useViT': useViT,
-    });
+    var request = http.MultipartRequest('POST', Uri.parse(classifyApiUrl));
+    request.headers['Authorization'] = 'Bearer $idToken';
+    request.files.add(await http.MultipartFile.fromPath('image', image.path));
+    request.fields['useViT'] = useViT.toString();
 
-    // Send the request
-    var response = await http.post(
-      Uri.parse(classifyApiUrl),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: body,
-    );
+    var response = await request.send();
 
-    // Check the response
     if (response.statusCode == 200) {
-      var responseData = jsonDecode(response.body);
-      return responseData[
+      var responseData = await http.Response.fromStream(response);
+      var jsonResponse = jsonDecode(responseData.body);
+      developer.log('Image classified successfully: ${jsonResponse['predicted_class_name']}');
+      return jsonResponse[
           'predicted_class_name']; // Adjust according to your API's response structure
+    } else if (response.statusCode == 401) {
+      throw FirebaseAuthException(
+        code: 'ERROR_UNAUTHORIZED',
+        message: 'Unauthorized: User not logged in',
+      );
     } else {
       throw Exception('Failed to classify image: ${response.statusCode}');
     }
   }
 
-  // Function for image colorization
   Future<File> colorizeImage(File image) async {
-    // Read the image as bytes
-    final bytes = await image.readAsBytes();
-    // Encode the bytes to Base64
-    String base64Image = base64Encode(bytes);
+    final idToken = await _getIdToken();
+    if (idToken == null) {
+      throw FirebaseAuthException(
+        code: 'ERROR_USER_NOT_LOGGED_IN',
+        message: 'User not logged in',
+      );
+    }
 
-    // Create the JSON body
-    final body = jsonEncode({
-      'image': base64Image,
-    });
+    var request = http.MultipartRequest('POST', Uri.parse(colorizeApiUrl));
+    request.headers['Authorization'] = 'Bearer $idToken';
+    request.files.add(await http.MultipartFile.fromPath('image', image.path));
 
-    // Send the request
-    var response = await http.post(
-      Uri.parse(colorizeApiUrl),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: body,
-    );
+    var response = await request.send();
 
-    // Check the response
     if (response.statusCode == 200) {
-      var responseData = jsonDecode(response.body);
-      // Assuming the response contains a base64 string of the colorized image
-      String colorizedBase64 =
-          responseData['colorized_image']; // Adjust based on API's response
-      // Convert the base64 string back to a file
-      List<int> colorizedBytes = base64Decode(colorizedBase64);
-      File colorizedFile = await _saveImageToFile(colorizedBytes);
+      var responseData = await http.Response.fromStream(response);
+      File colorizedFile = await _saveImageToFile(responseData.bodyBytes);
+      developer.log('Image colorized successfully');
       return colorizedFile;
+    } else if (response.statusCode == 401) {
+      throw FirebaseAuthException(
+        code: 'ERROR_UNAUTHORIZED',
+        message: 'Unauthorized: User not logged in',
+      );
     } else {
       throw Exception('Failed to colorize image: ${response.statusCode}');
     }
   }
 
-  // Function for flood detection
-  Future<Map<String, dynamic>> detectFlood(File image) async {
-    // Read the image as bytes
-    final bytes = await image.readAsBytes();
-    // Encode the bytes to Base64
-    String base64Image = base64Encode(bytes);
+  Future<Map<String, File?>> detectFlood(File image) async {
+    final idToken = await _getIdToken();
+    if (idToken == null) {
+      throw FirebaseAuthException(
+        code: 'ERROR_USER_NOT_LOGGED_IN',
+        message: 'User not logged in',
+      );
+    }
 
-    // Create the JSON body
-    final body = jsonEncode({
-      'image': base64Image,
-    });
+    var request =
+        http.MultipartRequest('POST', Uri.parse(floodDetectionApiUrl));
+    request.headers['Authorization'] = 'Bearer $idToken';
+    request.files.add(await http.MultipartFile.fromPath('image', image.path));
 
-    // Send the request
-    var response = await http.post(
-      Uri.parse(floodDetectionApiUrl),
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: body,
-    );
+    var response = await request.send();
 
-    // Check the response
     if (response.statusCode == 200) {
-      var responseData = jsonDecode(response.body);
-      // Assuming the response contains base64 strings of the predicted mask and result image
-      String predictedMaskBase64 = responseData['predicted_mask'];
-      String resultImageBase64 = responseData['result_image'];
+      var responseData = await http.Response.fromStream(response);
 
-      // Convert the base64 strings back to files
-      List<int> predictedMaskBytes = base64Decode(predictedMaskBase64);
-      List<int> resultImageBytes = base64Decode(resultImageBase64);
+      // Extract files from the zip response
+      final archive = ZipDecoder().decodeBytes(responseData.bodyBytes);
+      File? predictedMaskFile;
+      File? resultImageFile;
 
-      File predictedMaskFile = await _saveImageToFile(predictedMaskBytes);
-      File resultImageFile = await _saveImageToFile(resultImageBytes);
+      for (final file in archive) {
+        final filename = file.name;
+        final data = file.content as List<int>;
+        if (filename == 'predicted_mask.png') {
+          predictedMaskFile = await _saveImageToFile(data);
+        } else if (filename == 'result_image.png') {
+          resultImageFile = await _saveImageToFile(data);
+        }
+      }
 
+      developer.log('Flood detected successfully');
       return {
         'predicted_mask': predictedMaskFile,
         'result_image': resultImageFile,
-        'flood_detected': responseData['flood_detected'],
       };
+    } else if (response.statusCode == 401) {
+      developer.log('Unauthorized: User not logged in');
+      throw FirebaseAuthException(
+        code: 'ERROR_UNAUTHORIZED',
+        message: 'Unauthorized: User not logged in',
+      );
     } else {
       throw Exception('Failed to detect flood: ${response.statusCode}');
     }
   }
 
-  // Function to save the colorized image to a file
   Future<File> _saveImageToFile(List<int> bytes) async {
-    // Save the image file (you may want to adjust the path and name)
     final directory = await Directory.systemTemp.createTemp();
-    final file = File('${directory.path}/colorized_image.png');
+    final file = File('${directory.path}/processed_image.png');
     await file.writeAsBytes(bytes);
     return file;
   }
