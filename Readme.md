@@ -26,6 +26,15 @@
    - **VGG16 & ViT** models for SAR-based crop classification.
 4. Results (colored images, flood maps, or crop type classifications) are returned to the app.
 
+## 🛠️ Tech Stack
+- **Frontend**: Flutter (Dart) (built with 3.24)
+- **Backend**: Flask (Python)
+- **Authentication & Database**: Firebase Authentication & Firestore
+- **AI Models**:
+  - Pix2Pix cGAN for image colorization
+  - UNETR for flood segmentation
+  - VGG16 and ViT for crop classification
+
 ---
 
 ## 🖼️ Architecture Diagram
@@ -83,12 +92,3 @@ Backend will be available at: `http://localhost:8080`
 - Download `google-services.json` for Android and/or `GoogleService-Info.plist` for iOS.
 - Place them into your Flutter project accordingly.
 - You can also use the official [FlutterFire CLI](https://firebase.google.com/docs/flutter/setup?platform=android#install-cli-tools) to configure Firebase easily for your Flutter app.
-
-## 🛠️ Tech Stack
-- **Frontend**: Flutter (Dart) (built with 3.24)
-- **Backend**: Flask (Python)
-- **Authentication & Database**: Firebase Authentication & Firestore
-- **AI Models**:
-  - Pix2Pix cGAN for image colorization
-  - UNETR for flood segmentation
-  - VGG16 and ViT for crop classification
