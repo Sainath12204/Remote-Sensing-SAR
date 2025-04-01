@@ -12,157 +12,93 @@ class RegistrationPage extends StatefulWidget {
 }
 
 class RegistrationPageState extends State<RegistrationPage> {
+  final _formKey = GlobalKey<FormState>();
+
+  // Controllers for form fields
   final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _usernameController = TextEditingController();
 
-  final FocusNode _emailFocusNode = FocusNode();
-  final FocusNode _phoneFocusNode = FocusNode();
-  final FocusNode _passwordFocusNode = FocusNode();
-  final FocusNode _usernameFocusNode = FocusNode();
+  // Instances of services
+  final AuthService _authService = AuthService();
+  final FirestoreService _firestoreService = FirestoreService();
 
-  final AuthService _authService = AuthService(); // Instance of AuthService
-  final FirestoreService _firestoreService =
-      FirestoreService(); // Instance of Firestore service
-
+  // State variables
   bool _obscurePassword = true; // For toggling password visibility
-  final bool _isEmailEntered = false;
-  final bool _isPhoneEntered = false;
-  final bool _isUsernameEntered = false;
-  bool _isEmailValid = true;
-  bool _isPhoneValid = true;
-  bool _isUsernameValid = true;
-  bool _isPasswordValid = true;
-  String _emailErrorText = '';
-  String _phoneErrorText = '';
+  String? _usernameError =
+      'Username cannot be empty.'; // Error message for username validation
+  String? _emailError =
+      'Email cannot be empty.'; // Error message for email validation
 
-  @override
-  void initState() {
-    super.initState();
-
-    _emailFocusNode.addListener(() {
-      if (!_emailFocusNode.hasFocus) {
-        _checkEmail(_emailController.text);
-      }
-    });
-
-    _phoneFocusNode.addListener(() {
-      if (!_phoneFocusNode.hasFocus) {
-        _checkPhone(_phoneController.text);
-      }
-    });
-
-    _usernameFocusNode.addListener(() {
-      if (!_usernameFocusNode.hasFocus) {
-        _checkUsername(_usernameController.text);
-      }
-    });
-
-    _passwordFocusNode.addListener(() {
-      if (!_passwordFocusNode.hasFocus) {
-        setState(() {
-          _isPasswordValid = validatePassword(_passwordController.text);
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _phoneController.dispose();
-    _passwordController.dispose();
-    _nameController.dispose();
-    _usernameController.dispose();
-    _emailFocusNode.dispose();
-    _phoneFocusNode.dispose();
-    _passwordFocusNode.dispose();
-    _usernameFocusNode.dispose();
-    super.dispose();
-  }
-
-  Future<void> _checkEmail(String email) async {
+  // Async validation for email
+  Future<String?> _validateEmail(String? email) async {
+    if (email == null || email.isEmpty) {
+      return 'Email cannot be empty.';
+    }
     final emailRegex = RegExp(r'^[a-zA-Z0-9._%+-]+@gmail\.com$');
-
-    if(email.isEmpty){
-      return;
-    }
-    
     if (!emailRegex.hasMatch(email)) {
-      setState(() {
-        _isEmailValid = false;
-        _emailErrorText = 'Invalid email format. Use xyz@gmail.com';
-      });
-      return;
+      return 'Invalid email format. Use xyz@gmail.com';
     }
-
     bool emailExists = await _firestoreService.isEmailUsed(email);
-    setState(() {
-      _isEmailValid = !emailExists;
-      _emailErrorText =
-          emailExists ? 'Email already in use. Please choose another one.' : '';
-    });
+    if (emailExists) {
+      return 'Email already in use. Please choose another one.';
+    }
+    return null;
   }
 
-  Future<void> _checkPhone(String phone) async {
-    final phoneRegex = RegExp(r'^\+91\d{10}$');
-
-    if(phone.isEmpty){
-      return;
+  // Async validation for username
+  Future<String?> _validateUsername(String? username) async {
+    if (username == null || username.isEmpty) {
+      return 'Username cannot be empty.';
     }
-
-    if (!phoneRegex.hasMatch(phone)) {
-      setState(() {
-        _isPhoneValid = false;
-        _phoneErrorText = 'Invalid phone number format. Use +91XXXXXXXXXX';
-      });
-      return;
-    }
-
-    bool phoneExists = await _firestoreService.isPhoneNumberUsed(phone);
-    setState(() {
-      _isPhoneValid = !phoneExists;
-      _phoneErrorText = phoneExists
-          ? 'Phone number already in use. Please choose another one.'
-          : '';
-    });
-  }
-
-  Future<void> _checkUsername(String username) async {
     bool usernameExists = await _firestoreService.isUsernameUsed(username);
-    setState(() {
-      _isUsernameValid = !usernameExists;
-    });
+    if (usernameExists) {
+      return 'Username already in use. Please choose another one.';
+    }
+    return null;
   }
 
-  bool validatePassword(String password) {
-    return password.length >= 6;
+  // Synchronous validation for password
+  String? _validatePassword(String? password) {
+    if (password == null || password.length < 6) {
+      return 'Password must be at least 6 characters long.';
+    }
+    return null;
   }
 
+  // Synchronous validation for name
+  String? _validateName(String? name) {
+    if (name == null || name.isEmpty) {
+      return 'Name cannot be empty.';
+    }
+    return null;
+  }
+
+  // Registration function
   Future<void> _register() async {
-    // Check that both email and phone are entered and valid
-    if (_isEmailEntered &&
-        _isPhoneEntered &&
-        _isUsernameEntered &&
-        _isEmailValid &&
-        _isPhoneValid &&
-        _isUsernameValid) {
+    _usernameError = await _validateUsername(_usernameController.text);
+    _emailError = await _validateEmail(_emailController.text);
+    setState(() {}); // Update the UI to reflect validation result
+
+    // Check if the form is valid
+    if (_formKey.currentState!.validate()) {
+      // Send OTP to the provided email
       bool emailOtpSent =
           await _authService.sendEmailOtp(_emailController.text);
-      bool phoneOtpSent =
-          await _authService.sendPhoneOtp(_phoneController.text);
 
-      // Navigate only if both OTPs were successfully sent
-      if (emailOtpSent && phoneOtpSent) {
-        Toast.show(context, "OTP sent successfully to email and phone.", ToastType.success);
+      if (emailOtpSent) {
+        // Show success toast and navigate to OTP verification page
+        Toast.show(
+          context,
+          "OTP sent successfully to your email. Please check your inbox.",
+          ToastType.success,
+        );
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => OTPVerificationPage(
               email: _emailController.text,
-              phone: _phoneController.text,
               name: _nameController.text,
               username: _usernameController.text,
               password: _passwordController.text,
@@ -170,12 +106,13 @@ class RegistrationPageState extends State<RegistrationPage> {
           ),
         );
       } else {
-        Toast.show(context,
-            "Failed to send OTPs. Check your entered details and try again.", ToastType.error);
+        // Show error toast if OTP sending fails
+        Toast.show(
+          context,
+          "Failed to send OTP. Please ensure the email is correct and try again.",
+          ToastType.error,
+        );
       }
-    } else {
-      Toast.show(
-          context, "Please enter valid email, phone number, and username.", ToastType.error);
     }
   }
 
@@ -183,10 +120,8 @@ class RegistrationPageState extends State<RegistrationPage> {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        _emailFocusNode.unfocus();
-        _phoneFocusNode.unfocus();
-        _passwordFocusNode.unfocus();
-        _usernameFocusNode.unfocus();
+        // Unfocus all text fields when tapping outside
+        FocusScope.of(context).unfocus();
       },
       child: Scaffold(
         appBar: AppBar(
@@ -194,127 +129,103 @@ class RegistrationPageState extends State<RegistrationPage> {
           centerTitle: true,
         ),
         body: Center(
-          // Centering the Column
           child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center, // Center vertically
-              crossAxisAlignment:
-                  CrossAxisAlignment.center, // Center horizontally
-              children: <Widget>[
-                const SizedBox(height: 40), // Space at the top
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-                  child: TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Name',
-                      hintText: 'Enter your full name',
-                    ),
-                  ),
-                ),
-                const SizedBox(
-                    height: 15), // Space between name and username fields
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-                  child: TextField(
-                    controller: _usernameController,
-                    focusNode: _usernameFocusNode,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Username',
-                      hintText: 'Choose a username',
-                      errorText: _isUsernameValid
-                          ? null
-                          : 'Username already in use. Please choose another one.',
-                    ),
-                  ),
-                ),
-                const SizedBox(
-                    height: 15), // Space between username and email fields
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-                  child: TextField(
-                    controller: _emailController,
-                    focusNode: _emailFocusNode,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Email',
-                      hintText: 'Enter valid email id as abc@gmail.com',
-                      errorText: _isEmailValid ? null : _emailErrorText,
-                    ),
-                  ),
-                ),
-                const SizedBox(
-                    height: 15), // Space between email and phone fields
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-                  child: TextField(
-                    controller: _phoneController,
-                    focusNode: _phoneFocusNode,
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(),
-                      labelText: 'Phone',
-                      hintText: 'Enter your phone number as +91XXXXXXXXXX',
-                      errorText: _isPhoneValid ? null : _phoneErrorText,
-                    ),
-                  ),
-                ),
-                const SizedBox(
-                    height: 15), // Space between phone and password fields
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
-                  child: TextField(
-                    controller: _passwordController,
-                    focusNode: _passwordFocusNode,
-                    obscureText: _obscurePassword, // Controlled by toggle
-                    decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      labelText: 'Password',
-                      hintText: 'Enter secure password',
-                      errorText: _isPasswordValid
-                          ? null
-                          : 'Password must be at least 6 characters long',
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword =
-                                !_obscurePassword; // Toggle visibility
-                          });
-                        },
+            child: Form(
+              key: _formKey,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  const SizedBox(height: 40),
+                  // Name field
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                    child: TextFormField(
+                      controller: _nameController,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Name',
+                        hintText: 'Enter your full name',
                       ),
+                      validator: _validateName,
                     ),
                   ),
-                ),
-                const SizedBox(height: 20), // Space before the register button
-                FilledButton(
-                  onPressed: _isEmailValid &&
-                          _isPhoneValid &&
-                          _isUsernameValid &&
-                          _isPasswordValid
-                      ? _register
-                      : null,
-                  child: const Text('Register'),
-                ),
-                const SizedBox(height: 30), // Space after the register button
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Already have an account? Login'),
-                ),
-                const SizedBox(height: 50), // Space at the bottom
-              ],
+                  const SizedBox(height: 15),
+                  // Username field
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                    child: TextFormField(
+                      controller: _usernameController,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Username',
+                        hintText: 'Choose a username',
+                      ),
+                      validator: (value) => _usernameError,
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  // Email field
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                    child: TextFormField(
+                      controller: _emailController,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        labelText: 'Email',
+                        hintText: 'Enter valid email id as abc@gmail.com',
+                      ),
+                      validator: (value) => _emailError,
+                    ),
+                  ),
+                  const SizedBox(height: 15),
+                  // Password field
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 15, vertical: 5),
+                    child: TextFormField(
+                      controller: _passwordController,
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        labelText: 'Password',
+                        hintText: 'Enter secure password',
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
+                      ),
+                      validator: _validatePassword,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  // Register button
+                  FilledButton(
+                    onPressed: _register,
+                    child: const Text('Register'),
+                  ),
+                  const SizedBox(height: 30),
+                  // Login navigation button
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Already have an account? Login'),
+                  ),
+                  const SizedBox(height: 50),
+                ],
+              ),
             ),
           ),
         ),
